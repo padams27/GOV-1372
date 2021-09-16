@@ -1,0 +1,16 @@
+﻿player1,player2,score1,score2
+cycler,handshaker,28,398
+cycler,foolMeOnce,51,386
+cycler,titfortat,278,273
+cycler,thuemorser,188,313
+cycler,majorityScrounger,28,398
+handshaker,foolMeOnce,110,100
+handshaker,titfortat,106,101
+handshaker,thuemorser,299,54
+handshaker,majorityScrounger,7,492
+foolMeOnce,titfortat,300,300
+foolMeOnce,thuemorser,298,58
+foolMeOnce,majorityScrounger,476,16
+titfortat,thuemorser,233,233
+titfortat,majorityScrounger,213,218
+thuemorser,majorityScrounger,400,150
