@@ -220,7 +220,7 @@ library(skimr)
 
 # standard deviation of titfortat is far lower than the other strategies - so if you were to do this, like Axelrod, with many more
 # strats then titfortat would win. with the small sample I selected the winning strategies may not have had any opponent that found their
-# 'weakness', so with many more opponents they would have more losses than just from the small sample of 6. 
+# 'weakness', so with many more opponents they would have more losses than just from the small sample of 6. consistent in every game 
 
 avg_skim <- player_data_long %>% 
   group_by(player) %>% 
