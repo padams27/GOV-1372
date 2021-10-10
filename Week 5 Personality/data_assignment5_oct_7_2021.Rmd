@@ -14,6 +14,10 @@ library(ggplot2) # ggplot
 library(tidyr)
 library(gridExtra) # grid.arrange
 library(psych) #fa.parallel
+library(gt)
+library(ggcorrplot)
+library(broom)
+
 ```
 
 # Measuring Personality
@@ -49,8 +53,10 @@ The last 20 variables in the data are the actual items from the BFI-10 and the T
 
 Don't forget to load the data.
 
-```{r faces, include=FALSE}
+```{r faces, include=FALSE, message=FALSE}
+
 personality_data <- read_csv('Oct7ClassData.csv')
+
 ```
 
 ## Question 1
@@ -60,25 +66,131 @@ Check the Google Drive for your photo assignments and download the assigned phot
 ## Question 2
 Each photo should have at least two people assigned to code it. Confer with each of the people who were also assigned to your photo and see what their ratings were on the PLSCI, as well as their guesses about openness, conscientiousness, and ideology. **What does this tell you about the PLSCI? Read a bit about intercoder (aka inter-rater) reliability and reflect on its importance in research like this.**
 
+PLSCI is not a bad representative - we only had pictures though 
 
 ## Question 3
 **What challenges did you encounter administering the PLSCI? What do you notice that might complicate applying this inventory today?**
 
+Just a picture 
 
 ## Question 4
 **How would you redesign the PLSCI to make it more useful/current?**
 
+Update it - no CDs or Magazines etc. maybe if they have a TV?
 
 ## Question 5
 Let's see how the class compares to a large dataset of people who have taken one of these personality inventories. [Gosling et al. (2003)](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.113.6704&rep=rep1&type=pdf) report findings from administering the TIPI to about 1800 undergraduates. **Compare the class results to the published norms (you can use either the 15-20 or the 21-30 age range). Make a table or a plot of the class results and then write your thoughts about how these are similar or different to international norms and why that might be the case.**
+
+```{r}
+
+norms <- data.frame(All = c("Mean", "SD"),
+                    E = c(4.44, 1.45),
+                    A = c(5.23, 1.11),
+                    C = c(5.40, 1.32),
+                    ES = c(4.83, 1.42),
+                    O = c(5.38, 1.07)) %>% 
+  gt() %>% 
+  tab_header(title = "Normative data for the TIPI: Self-reported data")
+
+
+class_norms <- personality_data %>% 
+  select(10:14) %>% 
+  summarise_all(~ c(mean(.), sd(.))) %>% 
+  round(., 2) %>% 
+  rename(E = TIPI_extraversion,
+         A = TIPI_agreeableness,
+         C = TIPI_conscientiousness,
+         ES = TIPI_emot_stability,
+         O = TIPI_openness) %>% 
+  mutate(All = c("Mean", "SD"), .before = "E") %>% 
+  gt() %>% 
+  tab_header(title = "Class Data for the TIPI") %>% 
+  tab_options(table.width = pct(50))
+  
+
+norms
+class_norms
+
+```
 
 
 ## Question 6
 The BFI-10 and the TIPI are supposed to measure the same five personality traits. To what degree do they seem to be measuring the same constructs in our class sample? **Compare each BFI-10 index to its counterpart TIPI index. You can do this numerically by calculating the correlation coefficient, graphically with a plot, or both. Comment on what you find.**
 
 
+```{r}
+
+# with the 1 - 10 scale
+
+x <- personality_data %>% 
+  select(15:34) %>% 
+  drop_na() %>% 
+  cor()
+
+ggcorrplot(x, 
+           hc.order = FALSE, 
+           type = "lower",
+           outline.color = "white")
+
+cor_plot <- tibble(x[1,11],
+              x[2,12],
+              x[3,13],
+              x[4,14],
+              x[5,15],
+              x[6,16],
+              x[7,17],
+              x[8,18],
+              x[9,19],
+              x[10,20]) %>% 
+  rename(., one = `x[1, 11]`, two = `x[2, 12]`, three = `x[3, 13]`, four = `x[4, 14]`, five = `x[5, 15]`, 
+         six = `x[6, 16]`, seven = `x[7, 17]`, eight = `x[8, 18]`, nine = `x[9, 19]`, ten = `x[10, 20]`)
+
+ggcorrplot(cor_plot)
+
+```
+
+
+```{r}
+
+# five point scale 
+
+cor_5 <- personality_data %>% 
+  select(5:14) %>% 
+  drop_na() %>% 
+  cor() %>% 
+  as.data.frame()
+
+table <- cor_5 %>% 
+  select(1:5) %>% 
+  tail(5)
+
+
+ggcorrplot(table, hc.order = TRUE, lab = TRUE, show.legend = FALSE)
+
+
+
+```
+
 ## Question 7: Data Science Question
 We are interested in whether personality is associated with political ideology. Multiple regression is one approach to simultaneously testing associations between several indepdendent variables and a single dependent variable of interest. **Pick one of the personality inventories and use all of the trait indices in a regression model with at least one of the political ideology questions as the dependent variable. Interpret the results. (Note that you can use OLS for this question, even though it might not be the most appropriate model. As a bonus, you can explain why OLS might not be the best model and suggest an alternative. As another bonus, take a look back at all of the regressions you have just run. Why might we be skeptical of any individual p-value associated with one of these regression coefficients?)** Non-data science students should consider tackling part of this question but only using bivariate regression (one political ideology dependnet variable and one personality independent variable.)
+
+```{r}
+
+personality_data %>% 
+  lm(Overall ~ BFI_extraversion + BFI_agreeableness + BFI_conscientiousness + BFI_emot_stability + BFI_openness, .) %>% 
+  tidy() %>% 
+  gt() %>% 
+  fmt_number(columns = 2:5, decimals = 3)
+  
+personality_data %>% 
+  lm(Overall ~ TIPI_extraversion + TIPI_agreeableness + TIPI_conscientiousness + TIPI_emot_stability + TIPI_openness, .) %>% 
+  tidy() %>% 
+  gt() %>% 
+  fmt_number(columns = 2:5, decimals = 3)
+
+
+```
+
 
 
 ## Question 8: Data Science Question
