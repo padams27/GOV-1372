@@ -59,27 +59,14 @@ personality_data <- read_csv('Oct7ClassData.csv')
 
 ```
 
-## Question 1
-Check the Google Drive for your photo assignments and download the assigned photos of living space (you should be assigned to two photos). **Use the worksheet on the Google Drive to do an assessment based on the PLSCI. Based on the PLSCI and your own general impressions, fill out the new class survey with your guess about each person's openness, conscientiousness, and overall political ideology without looking at the actual data. Make sure to write down your responses to the survey since you won't have access to them after you submit. (Page 391 of [Gosling et al. 2002](http://gosling.psy.utexas.edu/wp-content/uploads/2014/09/JPSP02-Roomwithacue.pdf) might help you figure out which items on the inventory will be most helpful here.) Use the random ID to check your guesses. How did you do?** (If you are finding the PLSCI difficult and frustrating, peek ahead to the next few questions.)
 
+The idea behind this weeks work was to analyze each others personal living space to establish a personality profile following the Personal Living Space Cue Inventory (PLSCI) (Gosling et al. 2005). From this causal inference we can then theoretically lean on other research that goes further and looks at how personality relates to political ideology, such as Carney et al. (2009). The end result we are looking for is that by analyzing images of our college rooms we can infer the owner's political ideology. 
 
-## Question 2
-Each photo should have at least two people assigned to code it. Confer with each of the people who were also assigned to your photo and see what their ratings were on the PLSCI, as well as their guesses about openness, conscientiousness, and ideology. **What does this tell you about the PLSCI? Read a bit about intercoder (aka inter-rater) reliability and reflect on its importance in research like this.**
+We were able to analyze these correlations/causalities with the help of another class wide survey (which included IDs so we could match room photos to survey results) that included a self reported ideology, social and economic scale in the same way Carney did as well as two personality inventories: a short version of the Big Five Inventory (Rammstedt and John 2007), and the Ten Item Personality Test (TIPI) which is designed to quickly measure the big five. 
 
-PLSCI is not a bad representative - we only had pictures though 
+To begin with the PLSCI proved to be not a bad representative of the respondents personalities, even though it doesn't take into account SES and that we only had pictures to look at instead of visiting the rooms as it should be done (missing the last few data points). The inter-coder reliability of our group was very high and our results in turn matched up well with the original self-reported data, demonstrating that the test was reliable (at least in this instance). Another obvious issue with the test is that it is outdated when applied to modern college rooms, as students no longer posses CD's nor magazines and as such asking if 'the CD's were neatly stored' is a redundant question. 
 
-## Question 3
-**What challenges did you encounter administering the PLSCI? What do you notice that might complicate applying this inventory today?**
-
-Just a picture 
-
-## Question 4
-**How would you redesign the PLSCI to make it more useful/current?**
-
-Update it - no CDs or Magazines etc. maybe if they have a TV?
-
-## Question 5
-Let's see how the class compares to a large dataset of people who have taken one of these personality inventories. [Gosling et al. (2003)](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.113.6704&rep=rep1&type=pdf) report findings from administering the TIPI to about 1800 undergraduates. **Compare the class results to the published norms (you can use either the 15-20 or the 21-30 age range). Make a table or a plot of the class results and then write your thoughts about how these are similar or different to international norms and why that might be the case.**
+When comparing the class TIPI results to the larger dataset produced by Gosling et al. I got these results:
 
 ```{r}
 
@@ -112,6 +99,75 @@ norms
 class_norms
 
 ```
+
+
+These tables show that our class averages for the TIBI were very close to the averages of the Gosling et al. (2003) report that involved 1800 participants. The significant differences were a 0.29 increase in the mean of 'Extraversion', a 0.35 reduction in 'Agreeableness' and a 0.29 decrease in 'Emotional Stability'. I would suggest that this is due to the higher number of 'liberal' respondents that exist in a Harvard Gov class, as higher emotional stability, lower extraversion and lower agreeableness are all linked to the respondents being more conservative. This makes sense when we consider how the demographic of our class differs from even other college cohorts let alone the general population. 
+
+
+Given the causal inference we are assuming in order to get from analyzing someones room to identifying their political ideology there is more chance we may compound errors. Therefore it is only normal to test just how reliable the data is in the intermediary steps, and the two personality tests provide a good example of this. If the theory behind the path of causation that we are following is correct then both tests should be giving very similar results and as such the measures of the five personality points should show a strong positive correlation:
+
+
+```{r}
+
+# five point scale 
+
+cor_5 <- personality_data %>% 
+  select(5:14) %>% 
+  drop_na() %>% 
+  cor() %>% 
+  as.data.frame()
+
+table <- cor_5 %>% 
+  select(1:5) %>% 
+  tail(5)
+
+ggcorrplot(table, hc.order = TRUE, lab = TRUE, show.legend = FALSE)
+
+```
+
+
+It's pretty clear that there is a decent correlation amongst most of the points, however I would have expected to see them being stronger and up above the 0.8 mark as 'Extraversion' is. Of course, the result for 'Openness' is very low and raises some questions: this may be due to unreliable responses, for example misreading the prompt, or that the two scales produced very different results. The other three results show a strong similarity at 0.6, even if this isn't as strong as I would have expected. I think one of the most important reasons behind this that TIPI uses a seven point scale compared to BFI's five. This gives the BFI more consistent results, but also less accurate results.
+
+By using a larger scale (strongly unfavourable, somewhat..., slightly..., neutral, etc) the self-reported results are more accurate but the results of the BFI are more similar. This means that when comparing the self-reported test to the room-based evaluation (PLSCI) done by peers we were able to achieve more similar results due to a smaller variation, and so in turn one could argue at this stage of the process the data is more accurate when inferring causality from PLSCI to personality. However this then flips when we look at how we deduce ideology from personality. To explore this I ran a regression on both the TIPI and BFI results to see how each point relate to overall self-reported ideology:
+
+
+```{r}
+
+
+personality_data %>% 
+  lm(Overall ~ TIPI_extraversion + TIPI_agreeableness + TIPI_conscientiousness + TIPI_emot_stability + TIPI_openness, .) %>% 
+  tidy() %>% 
+  gt() %>% 
+  fmt_number(columns = 2:5, decimals = 3)
+
+
+personality_data %>% 
+  lm(Overall ~ BFI_extraversion + BFI_agreeableness + BFI_conscientiousness + BFI_emot_stability + BFI_openness, .) %>% 
+  tidy() %>% 
+  gt() %>% 
+  fmt_number(columns = 2:5, decimals = 3)
+
+
+```
+
+
+The TIPI test proved to be a far better test in this circumstance, with the only two statistically significant results from either. The two results from the TIPI test with a p-value below 0.05, 'Agreeableness' and 'Conscientiousness', show that they are the strongest indicators of political ideology, and support the differences we saw earlier in the skewed representation of ideology of a Harvard class when compared to the respondents of the Gosling et al. study. These two indicators were the best for predicting ideology, with higher conscientiousness causing greater chance of being more conservaitve and visa versa for agreeableness. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## Question 6
@@ -150,40 +206,23 @@ ggcorrplot(cor_plot)
 ```
 
 
-```{r}
 
-# five point scale 
-
-cor_5 <- personality_data %>% 
-  select(5:14) %>% 
-  drop_na() %>% 
-  cor() %>% 
-  as.data.frame()
-
-table <- cor_5 %>% 
-  select(1:5) %>% 
-  tail(5)
-
-
-ggcorrplot(table, hc.order = TRUE, lab = TRUE, show.legend = FALSE)
-
-
-
-```
 
 ## Question 7: Data Science Question
 We are interested in whether personality is associated with political ideology. Multiple regression is one approach to simultaneously testing associations between several indepdendent variables and a single dependent variable of interest. **Pick one of the personality inventories and use all of the trait indices in a regression model with at least one of the political ideology questions as the dependent variable. Interpret the results. (Note that you can use OLS for this question, even though it might not be the most appropriate model. As a bonus, you can explain why OLS might not be the best model and suggest an alternative. As another bonus, take a look back at all of the regressions you have just run. Why might we be skeptical of any individual p-value associated with one of these regression coefficients?)** Non-data science students should consider tackling part of this question but only using bivariate regression (one political ideology dependnet variable and one personality independent variable.)
 
 ```{r}
 
+
 personality_data %>% 
-  lm(Overall ~ BFI_extraversion + BFI_agreeableness + BFI_conscientiousness + BFI_emot_stability + BFI_openness, .) %>% 
+  lm(Overall ~ TIPI_extraversion + TIPI_agreeableness + TIPI_conscientiousness + TIPI_emot_stability + TIPI_openness, .) %>% 
   tidy() %>% 
   gt() %>% 
   fmt_number(columns = 2:5, decimals = 3)
-  
+
+
 personality_data %>% 
-  lm(Overall ~ TIPI_extraversion + TIPI_agreeableness + TIPI_conscientiousness + TIPI_emot_stability + TIPI_openness, .) %>% 
+  lm(Overall ~ BFI_extraversion + BFI_agreeableness + BFI_conscientiousness + BFI_emot_stability + BFI_openness, .) %>% 
   tidy() %>% 
   gt() %>% 
   fmt_number(columns = 2:5, decimals = 3)
