@@ -25,82 +25,13 @@ library(sf)
 
 ```
 
-In this Data Exploration assignment, you will work with data that has been modified from the Barnhart et al. (2020) article. You will investigate whether certain types of countries are more likely to initiate conflicts with other countries. Note that you are only working with the data used to generate the *Monadic Findings* of the paper - that is, you will examine whether democracies initiate fewer conflicts than autocracies.
 
-If you have a question about any part of this assignment, please ask! Note that the actionable part of each question is **bolded**.
-
-# The Suffragist Peace
-
-**Data Details:**
-
-* File Name: \texttt{suffrage\_data.csv}
-
-* Source: These data are from Barnhart et al. (2020).
-
-Variable Name         | Variable Description
---------------------- | --------------------------------------
-\texttt{ccode1}         | Unique country code
-\texttt{country\_name}  | Country name
-\texttt{year}  | Year
-\texttt{init}  | The number of overall conflicts initiated by the country specified by `ccode1` during the year specified by `year`
-\texttt{init\_autoc}  | The number of overall conflicts initiated by the country specified by `ccode1` **with autocracies** during the year specified by `year`
-\texttt{init\_democ}  | The number of overall conflicts initiated by the country specified by `ccode1` **with democracies** during the year specified by `year`
-\texttt{democracynosuff}  | Indicator variable for a democracy without women's suffrage. 1 if the country is a democracy without women's suffrage, 0 otherwise.
-\texttt{suffrage}  | Indicator variable for a country with women's suffrage
-\texttt{autocracy}  | Indicator variable for a country with an autocratic government
-\texttt{nuclear}  | Indicator variable for whether the country is a nuclear power
-\texttt{wcivillibs}  | Measure of the degree of civil liberty women enjoy, ranging from 0-1, where higher values mean women have more civil liberties
-\texttt{polity}  | Polity score for the country specified by `ccode1` during the year specified by `year`
 
 ```{r biases, include=FALSE, message = FALSE}
 
 s_data <- read_csv("suffrage_data.csv")
 
 ```
-
-## Question 1
-
-### Part a
-Before getting started, it is a good idea to take a look at the structure of the data. This data set is different from what we've seen so far. Until now, all the data we've looked at has had the individual as the unit of observation. This means that each row of the data corresponds to a single individual, and the columns correspond to some characteristics of that individual, like their responses to a survey. When working with data, it is important to understand the unit of observation, along with other characteristics of the data.  The unit of observation is the object about which data is collected. That could be, say, an individual, a country, a football game, or an episode of TV. **Take a look at the data to determine the unit of observation. Note that the structure isn't exactly the same as the data used in Barnhart et al. (2020).**
-
-
-Country by year
-
-
-
-### Part b
-
-Is war rare or common? **Make a histogram of the main dependent variable, `init`. Comment on what you see, being sure to keep the unit of observation and the definition of the `init` variable in mind. Is what you see surprising? What does it say about the frequency of initiating conflict?**
-
-
-```{r}
-
-s_data %>% 
-  ggplot(., aes(init)) +
-  geom_histogram()
-
-
-
-s_data %>% filter(init > 23)
-
-```
-
-
-...it's pretty rare
-
-
-## Question 2
-
-**How were the `autocracy` and `suffrage` variables defined? Can autocracies also have women's suffrage (at least in this coding scheme)? What reasons do the authors of the paper give for these coding decisions and how do you think it might affect their findings?** (Hint: take a close look at pages 651 and 652 of the original article.)
-
-
-\texttt{suffrage}  | Indicator variable for a country with women's suffrage
-\texttt{autocracy}  | Indicator variable for a country with an autocratic government
-
-
-suffrage is in most cases a subset of being democratic, so no. 
-
-
 
 
 
@@ -202,7 +133,7 @@ s_data %>%
 ```
 
 
-As can by seen by this slightly more complex regression, in reality the countries that hold nuclear power are far more likely to initiate conflict, and this variable is of far greater importance than women's suffrage. I thought it would be interesting to see if the original regression using just suffrage would change is I were to remove countries that were nuclear powers, such that the count for initiating conflict is hopefully more directly correlated to suffrage. Of course this has a few limitations, for example many rich and developed democracies have nuclear arms as a result of progression in time - and these are strongly linked to increasing women's civil freedom (and suffrage).
+As can be seen by this slightly more complex regression, in reality the countries that hold nuclear power are far more likely to initiate conflict, and this variable is of far greater importance than women's suffrage. I thought it would be interesting to see if the original regression using just suffrage would change is I were to remove countries that were nuclear powers, such that the count for initiating conflict is hopefully more directly correlated to suffrage. Of course this has a few limitations, for example many rich and developed democracies have nuclear arms as a result of progression in time - and these are strongly linked to increasing women's civil freedom (and suffrage).
 
 
 ```{r}
@@ -235,50 +166,12 @@ As can be seen, there is slight increase in the effect suffrage plays in reducin
 
 
 
-
-
-
-
-
-
-
-## Question 5
-
-The model in the previous question was very simple; we modeled initiation only as a function of suffrage. In reality, the relationship is probably more complicated - conflict initiation probably depends on more than just women's suffrage. **Look at the other variables available in the data and find one or more that you think may also be related to conflict initiation. Explain why you think so, then add the variable(s) to the right side of the regression (as explanatory variables) in question 4. Interpret what you find.**
-
-
-
 ```{r}
 
 
-s_data %>% 
-  lm(nuclear ~ init, .) %>% 
-  tidy(conf.int = T) %>% 
-  select(-c(p.value, std.error, statistic)) %>% 
-  mutate(term = c("Intercept", "Nuclear")) %>% 
-  gt() %>% 
-  tab_header(title = "Effect of Nuclear Power on Initiating Conflict") %>% 
-  cols_label(term = "",
-             estimate = "Coefficient",
-             conf.low = "5th percentile",
-             conf.high = "95th percentile") %>%
-  tab_spanner(label = "Confidence Interval",
-              columns = 3:4) %>% 
-  fmt_number(., columns = vars("estimate", "conf.low", "conf.high"), decimals = 3)
 
+s_data$suffrage <- as.factor(s_data$suffrage)
 
-
-
-```
-
-
-## Question 8
-One of the advantages of the data we have is that we can plot trends over time. **Group countries into those with and without suffrage and plot the average number of disputes initiated by those countries in each year covered by the data. Comment on what you find.**
-
-
-```{r, message=FALSE}
-
- s_data$suffrage <- as.factor(s_data$suffrage)
 
 suff <- s_data %>% 
   group_by(year, suffrage) %>%  
@@ -293,38 +186,12 @@ suff <- s_data %>%
        y = "Year",
        subtitle = "Suffrage: 1 = Yes, 0 = None")
 
-
 suff
-
 ```
 
 
 
-## Question 9
 
-With geographical data like we are working with, you may want to make a map. For example, you may want to be able to visualize which countries had suffrage and which did not in a given year. As an example of how to create maps using the `ggplot2` and `sf` packages, below is a map of suffrage in North America in 1960. **Use the `map` data to plot a map of the number of conflicts initiated by each country in the Americas (that is, countries in North and South America), in 1960. You can modify the example code given below.**
 
-Note that if you encounter a country that is missing from your map, you should check how the country name is spelled in each of the data sets (`world` and `s_data`). We merge the two data sets together to allow for mapping based on country name, so if they country names don't match exactly then the merge will return `NA` and the mapping will fail. To see an example of how to change the country names when need be, see below. For example, in the `world` data set, the US is called "United States", whereas in the `s_data` data set, it is called "United States of America".
 
-```{r}
 
-# if you don't have these libraries already, download them using install.packages()
-library(sf) # this is for plotting maps in ggplot
-library(spData) # this is for the `world` data set
-
-# edit this to change country names when the two data sets don't exactly match
-s_data <- s_data %>%
-  mutate(country_name = case_when(
-    country_name == "United States of America" ~ "United States",
-    country_name == "Russia" ~ "Russian Federation",
-    T ~ country_name
-  ))
-
-map <- left_join(s_data, world[, c("continent", "geom", "name_long")], by = c("country_name" = "name_long")) # merging map data with class data
-
-map %>% filter(year == 1960, continent == "North America") %>% 
-  ggplot() +
-  geom_sf(aes(fill = as.factor(suffrage), geometry = geom)) +
-  labs(fill = "Suffrage", title = "Women's Suffrage in North America, 1950")
-
-```
