@@ -11,7 +11,7 @@ urlcolor: blue
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(estimatr)
 library(haven)
@@ -21,39 +21,11 @@ library(broom)
 
 ```
 
-
-Variable Name         | Variable Description
---------------------- | --------------------------------------
-\texttt{race\_ethnicity}         | Race or ethnicity. Levels labelled in data: 1-White, 2-Black or AfAm, 3-American Indian or Alaskan Native, 4 through 14- Asian or Pacific Islander (details in labels), and 15-Some other race
-\texttt{hispanic}  | Of Hispanic, Latino, or Spanish origin. Levels labelled in data: 1-Not Hispanic, 2-15 Hispanic of various origins
-\texttt{day\_running}  | Day relative to onset of George Floyd protests (day 0)
-\texttt{age}  | Respondent's age
-\texttt{female}  | Binary indicator variable: 1 if respondent female, 0 otherwise
-\texttt{college}  | Binary indicator variable: 1 if respondent attended college, 0 otherwise
-\texttt{household\_income}  | Household pre-tax income ranging from 1 (less than \$15,000) to 24 (more than \$250,000). Details for other levels in labels. 
-\texttt{pid7}  | Party identification on a seven point scale with strong, weak, lean: 1-Strong Democrat to 7-Strong Republican with 4-Independent.  
-\texttt{ideo5}  | Ideological self placement: 1-Very liberal, 2-Liberal, 3-Moderate, 4-Conservative, 5-Very Conservative
-\texttt{vote\_clinton}  | Indicator variable for whether the respondent said they voted for Clinton in the 2016 presidential election
-\texttt{group\_favorability\_the\_police}  | Favorability towards the police: 1-Very favorable, 2-Somewhat favorable, 3-Somewhat unfavorable, 4-Very unfavorable
-\texttt{discrimination\_blacks}  | Perceptions of the level of discrimination in US faced by Blacks: 1-None at all, 2-A little, 3-A moderate amount, 4-A lot, 5-A great deal
-\texttt{date}  | The date the respondent took the survey
-\texttt{group\_fav\_white\_black}  | The difference in respondents favorability towards Blacks subtracted from their favorability towards whites (each on four point scale). Ranges from -3 to 3. 
-\texttt{racial\_attitudes\_generations}  | Agreement with the statement that generations of slavery and discrimination have made it difficult for Blacks to work their way out of the lower class: 1-Strongly Agree to 5-Strongly Disagree
-\texttt{interest}  | Degree to which respondent claims to follow politics: 1-Most of the time, 2-Some of the time, 3-Only now and then, 4-Hardly at all
-\texttt{group\_favorability\_jews}  | Favorability towards Jews: 1-Very favorable, 2-Somewhat favorable, 3-Somewhat unfavorable, 4-Very unfavorable
-\texttt{group\_favorability\_whites}  | Favorability towards whites: 1-Very favorable, 2-Somewhat favorable, 3-Somewhat unfavorable, 4-Very unfavorable
-\texttt{group\_favorability\_evangelicals}  | Favorability towards evangelicals: 1-Very favorable, 2-Somewhat favorable, 3-Somewhat unfavorable, 4-Very unfavorable
-\texttt{group\_favorability\_socialists}  | Favorability towards socialists: 1-Very favorable, 2-Somewhat favorable, 3-Somewhat unfavorable, 4-Very unfavorable
-\texttt{protest}  | Indicator variable if survey respondent lived in area that would at any point have a BLM protest in the wake of the killing of George Floyd
-\texttt{n\_protests}  | Number of eventual BLM protests in area where resident lived
-
-
 ```{r biases}
 
 load('RN_2001_data.RData')
 
 ```
-
 
 ```{r}
 
@@ -61,9 +33,7 @@ protest_df_bydate <- protest_df %>%  mutate(before = ifelse(day < as.Date("2020-
 
 ```
 
-
 For this weeks data we explored Reny and Newman's (2021) finding that in the wake of George Floyd's killing the resulting spread of protests influenced opinions about the level of discrimination faced by black Americans as well as the group favourability of Police. The data includes many other points of interest and variables but these aforementioned two are the main focus. To begin with it is worth seeing if the average for the outcome variables both before and after the 28th of May is statistically significant: for the variable 'group_favorability_the_police' the resulting t-test p-value was 0.02366, which we can conclude makes it a statistically significant change in mean. For 'discrimination_blacks' the resulting p-value was again significant at 0.01174. 
-
 
 ```{r}
 
@@ -116,9 +86,7 @@ v <- t.test(group_favorability_the_police ~ before, data = g, paired = TRUE)
 
 ```
 
-
 In order to better visualize this here are some plots of the two outcome variables we are looking at:
-
 
 ```{r}
 
@@ -131,7 +99,6 @@ avg_by_day <- protest_df_bydate %>%
 
 
 ```
-
 
 ```{r}
 
@@ -168,9 +135,7 @@ avg_by_day %>%
 
 ```
 
-
 Of course, there are many potentially compounding factors here that may change the way people respond so it is worth looking at how attitudes towards other groups changed in the same period.  
-
 
 ```{r}
 
@@ -223,7 +188,6 @@ As we can see this produces some interesting results - while the two variables w
 
 It should be noted that while I was looking at these results I couldn't help but think the figures didn't quite 'add up' (more 'significant' variables with a smaller change in mean). So after a lot of time spent on a large tangent (some of which can be seen in my code) I concluded that I had probably carried out the t-tests wrong. Nonetheless I have left this in if they were done correctly it is noteworthy. 
 
-
 Due to the nature of the protest's subject matter, it was particularly interesting to see how the respondents opinons changed when grouping by race. Again, this is easier to show graphically:
 
 ```{r}
@@ -274,12 +238,6 @@ avg_by_day_race %>%
 ```
 There is a large but understandable discrepancy in the averages before and after the incident, with 'white' respondents typically a whole number, lower (more favourable/less discrimination) than 'black' respondents. What is interesting is how these numbers changed after the 'day 0'. Police favourability decreased for black respondents to a larger degree, and didn't fall off as quickly - white respondents were back at pre-incident levels after 100 days where black ratings had only returned by a half. For neither of the two demographics did perceived black discrimination change dramatically, but this time it was the black respondents who returned to pre-incident levels faster. This is probably because they started so high to being with, while 'white' respondents had a genuine perception change. 
 
-
-
-###Part b
-There is often a problem in conducting surveys of non-response bias. That is, the people who answer surveys may differ from the people who do not answer surveys and the differences may vary over time. This is especially damaging to inference when non-response is correlated with the outcomes being measured. For example after a series of damaging headlines supporters of a politician may be less willing to answer phone surveys about that politician. As a result we would potentially observe an exaggeration of the negative effects of the scandal on a politician's polled approval rating. Test whether this is the case in the Reny and Newman data. **Test whether there is balance between the respondents before and after the onset of the protests along two demographic traits that you would expect to correlate with the measured responses to the outcome variables.**
-
-
 One last thing to consider with these last graphics is non-response bias. This is where those who answer the surveys differ from those who don't over time. In this context it is relevant as when non-response is correlated with the outcomes being measured it is harder to infer from the data. To use the example given in the prompt: "For example after a series of damaging headlines supporters of a politician may be less willing to answer phone surveys about that politician. As a result we would potentially observe an exaggeration of the negative effects of the scandal on a politician's polled approval rating". As the killing of George Floyd sparked such wide spread racial tensions, it would be reasonable to assume those that do support the police may be non-respondents. However the responses for this survey stay very consistent, suggesting this isn't to large a factor.
 
 ```{r}
@@ -306,22 +264,5 @@ ggplot(response_bias, aes(x = day_running, y = n, fill = as.factor(before))) +
 
 
 
-###Part c
-Racial resentment is often considered a symbolic attitude in strength and consistency. Examine the before and after levels of racial resentment as measured by the question from the racial resentment scale about the impact of generations of slavery and discrimination (racial_attitudes_generations). **Graph the average racial_attitudes_generations (remember the direction of how it is coded!) by day like other outcome variables. Does it behave like the other outcome variables? Does the data support that racial attitudes are symbolic attitudes?**
 
-```{r}
-
-protest_df_bydate %>% 
-  select(3, 15, 23) %>% 
-  group_by(day_running) %>% 
-  mutate(avg_race_res = mean(racial_attitudes_generations, na.rm = T)) %>% 
-  ggplot(aes(x = day_running, y = avg_race_res, fill = as.factor(before))) +
-  geom_point(colour = "black", size = 1) + 
-  geom_smooth(method="lm", se=FALSE, colour = "hotpink") +
-  geom_vline(xintercept = 0, colour = 'darkblue', linetype = "dashed") +
-  theme_classic() +
-  theme(legend.position = 'none') 
-
-
-```
 

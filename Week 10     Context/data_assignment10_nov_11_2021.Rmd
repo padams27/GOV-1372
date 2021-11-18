@@ -1,0 +1,188 @@
+---
+title: 'Data Exploration: Contextual Influences'
+author: "Patrick Adams"
+date: "November 11, 2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(estimatr)
+library(haven)
+library(stargazer)
+library(readxl) # you might need to install the readxl package before loading it
+library(plot.matrix) # you might need to install the plot.matrix package before loading it
+library(sjlabelled) # you might need to install the sjlabelled package before loading it
+library(effsize)
+select <- dplyr::select
+
+library(gt)
+library(broom)
+
+```
+
+```{r}
+#Load the data summarizing variable availability
+NationscapeVars_1 <- read_xlsx('vars_data.xlsx',sheet = 1) #we're using the read_xlsx function from the readxl package, which lets you specify which sheet to upload if you are using Excel data with multiple sheets
+NationscapeVars_2 <- read_xlsx('vars_data.xlsx',sheet = 2)
+```
+
+
+```{r, message=FALSE}
+NationscapeVars <- full_join(NationscapeVars_1,NationscapeVars_2) %>% # the full_join function keeps all rows in both objects and all columns
+  replace(is.na(.),0) # since we know that the NAs generated in the last command weren't asked in the weeks that show up as NA, we can replace NAs with 0s
+```
+
+
+This week we again were exploring the Nationscape dataset (Tausanovitch and Vavreck 2020), and the question I wanted to answer with this weeks data blog was:
+
+How did different news source coverage of President Trump's 2019/20 impeachment trial affect his approval ratings among their viewers?
+
+My hypothesis is that those who view CNN are more liberal than those who view FOX, and thus they will have lower approval ratings of Trump to begin with. However throughout the trial, depending on the coverage provided, the approval ratings of the President Trump would have fallen more amongst CNN viewers due to less favourable coverage than that which FOX news gave.
+
+
+
+```{r}
+heat_data <- NationscapeVars %>% mutate(across(.cols = everything(), as.logical)) %>% select(c(pres_approval,interest,news_sources_fox,news_sources_cnn,impeach_trump))
+
+plot(t(as.matrix(heat_data)), col = c('red','darkgreen'), las = 2) # we're using the plot() function from base R here; it only works this way because we have installed and loaded the plot.matrix package
+```
+
+This plot helps show the availability of the data points I chose to look at throughout the overall data set.
+
+The feedback I received was that the biases held by the separate viewership may impact the change seen; for example, as I touched on earlier those who watch CNN are potentially predisposed to a lower approval ratings of Trump, and so any change is more easily seen. Equally there is scenario in which, as this is measured on a four point scale, CNN viewers already hold such a low approval rating that they cannot get much worse and thus the ratings given by FOX viewers will potentially fall to a more significant degree.
+
+Some prior literature on this topic shows just how divided the viewership of different outlets can be:
+
+Martin, G. J., & Yurukoglu, A. (2017). Bias in Cable News. The American Economic Review, 107(9), 2565–2599. https://doi.org/10.1257/aer.20160812
+
+Hyun, K. D., & Moon, S. J. (2016). Agenda Setting in the Partisan TV News Context. Journalism & Mass Communication Quarterly, 93(3), 509–529. https://doi.org/10.1177/1077699016628820
+
+
+
+```{r}
+
+file_names_1 <- list.files("Nationscape-DataRelease_WeeklyMaterials_DTA/phase_1_v20200814/") %>% .[1:24]
+
+phase_1 <- map_dfr(.x = file_names_1, 
+                   ~read_dta(file = str_c("Nationscape-DataRelease_WeeklyMaterials_DTA/phase_1_v20200814/", ., "/", ., ".dta")) %>%  select(start_date, education, pres_approval, interest, news_sources_fox, news_sources_cnn, impeach_trump))
+
+TI <- phase_1 %>%
+  mutate(across(.cols = everything(), ~na_if(., 999))) %>%
+  mutate(across(.cols = everything(), ~na_if(., 888)))
+
+TI <- TI %>%
+  mutate(treated = if_else(start_date > as.Date('2019-12-18'), TRUE, FALSE))
+
+```
+
+
+```{r}
+
+t.test(pres_approval ~ treated, data = TI) 
+cohen.d(pres_approval ~ treated, data = TI)
+
+```
+To establish if there was a statistically significant change in Trump's approval rating before and after the December 18th Impeachment I ran a t-test on the phase 1 data. Even though there is a statistically significant change based on p-value = 0.0003614, the cohen's d effect size is negligible at 0.03125638. So while there is an effect, the effect size is negligible. This may be because the survey size is so large, and those surveyed each week are different, that the significance may be down to sampling error instead of a shift in the population. This is just a quick test, and can be explored further.  
+
+Producing a similar graph to those we used to visualize data in week 7 doesn't give us a particularly conclusive picture either, even if there is a slight uptick in the plotted regression line. The visualization also speaks to sampling error that I assumed after the t-test results, as can be seen by the spread of the data points.
+
+```{r}
+
+TI <- TI %>% 
+  mutate(day = as.Date(start_date, origin = "2019-12-18")) 
+  
+
+TI_avg_by_day <- TI %>% 
+  group_by(day) %>% 
+  mutate(avg_imp = mean(impeach_trump, na.rm = T)) %>% 
+  mutate(avg_app = mean(pres_approval, na.rm = T))
+
+TI_avg_by_day %>% 
+  group_by(day) %>% 
+  ggplot(aes(x = day, y = avg_app, fill = as.factor(treated))) +
+  geom_point(colour = "black", size = 1) + 
+  geom_smooth(method="lm", se=FALSE, colour = "hotpink") +
+  geom_vline(xintercept = as.Date("2019-12-18"), colour = 'darkblue', linetype = "dashed") +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  labs(title = "Presidential Approval",
+       x = "Score",
+       y = "Date")
+
+impeach <- TI_avg_by_day %>% 
+  group_by(day) %>% 
+  ggplot(aes(x = day, y = avg_imp, fill = as.factor(treated))) +
+  geom_point(colour = "black", size = 1) + 
+  geom_smooth(method="lm", se=FALSE, colour = "hotpink") +
+  geom_vline(xintercept = as.Date("2019-12-18"), colour = 'darkblue', linetype = "dashed") +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  labs(title = "Views on Impeachment",
+       x = "Score",
+       y = "Date")
+
+
+
+
+
+```
+
+
+Regardless of the small likely hood of my hypotheses being correct, or at least provable from this data, I wanted to at least compare the views of the respondents who got their news from different sources. To do this I filtered out all respondents who had answered yes to viewing either CNN and no to FOX, and visa versa. 
+
+```{r, include=FALSE}
+
+# include = false, else latex fails to compile to pdf. my guess is gt tables need updating 
+
+TI_avg_by_day <- TI_avg_by_day %>% 
+  mutate(fox = ifelse(news_sources_fox == 1 & news_sources_cnn == 2, 1, 0)) %>% 
+  mutate(cnn = ifelse(news_sources_fox == 2 & news_sources_cnn == 1, 1, 0)) %>% 
+  mutate(polarx = ifelse(fox == 1 | cnn == 1, 1, 0))
+
+TI_avg_by_day %>% 
+  lm(impeach_trump ~ cnn + fox, .) %>% 
+  tidy() %>% 
+  select(term, estimate) %>% 
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4) %>% 
+  tab_header(title = "Impeachment")
+
+TI_avg_by_day %>% 
+  lm(pres_approval ~ cnn + fox, .) %>% 
+  tidy() %>% 
+  select(term, estimate) %>% 
+  gt() %>% 
+  fmt_number(columns = 2, decimals = 4) %>% 
+  tab_header(title = "Approval")
+
+```
+
+
+When looking at only those respondents that solely watched one news source it is easy to see how differently the viewers perceive the event. Using a linear regression model we see that those who only watch FOX are, on only a four point scale, 0.882 units more approving (as the scale goes from 1 - Strong approval through to 4 - Strong disapproval). Likewise, CNN viewers were 0.671 units less approving. A similar situation is seen with the 'Impeach Trump' data point. 
+
+Finally, to see if these partisan viewers changed their opinion I ran some more specific t-tests:
+
+```{r}
+
+TI_avg_by_day %>% 
+  filter(fox == 1) %>% 
+  t.test(pres_approval ~ treated, .)
+
+TI_avg_by_day %>% 
+  filter(cnn == 1) %>% 
+  t.test(pres_approval ~ treated, .)
+
+
+```
+
+As with the original t-tests, neither of these more specific tests proved to show any statistical significance. So to answer my original question, the news sources didn't change the opinions of those who only watch one or the other at all. In hindsight this makes complete sense, as based on the fact that both sets of viewers started out with such different approval ratings it shows they have probably already made up their minds and have strong biases on the subject. 
+
+
+

@@ -1,0 +1,340 @@
+---
+title: 'Data Exploration: Emotional Arousal'
+author: "Paddy Adams"
+date: "November 4, 2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(estimatr)
+library(haven)
+library(stargazer)
+select <- dplyr::select
+
+```
+
+
+
+```{r}
+#Load the data for Study 1
+Study1_preprocess <- read_dta("Study1ReplicationData.dta")
+
+```
+
+```{r, error=TRUE}
+#Method 1: Renaming by name
+Study1_processing1 <- Study1_preprocess %>% 
+  rename_with(.cols = c(Q13, Q14, Q15), ~c("virus_spread", "is_cure", "info_request"))
+
+```
+
+```{r, error=TRUE}
+#Method 2: Renaming by index/position
+#last_col() is just a function that returns the index number of the last variable in the dataset (33 in this one), and the offset subtracts that number from it (33-5=28)
+Study1_processing2 <- Study1_processing1 %>% 
+  rename_with(.cols = last_col(offset = 5):last_col(), ~c("gender", "race", "edu", "pid7", "reg_stat", "ideology"))
+```
+
+```{r, error=TRUE}
+#Method 3: Renaming by logical condition
+Study1_processing3 <- Study1_processing2 %>% 
+  rename_with(.cols = contains("Q11"), ~c("disgust", "grossed_out", "repulsed", "afraid", "anxious", "worried"))
+```
+
+```{r, error=TRUE}
+Study1_processing4 <- Study1_processing3 %>% 
+  select(-contains("Q16"))
+```
+
+```{r, error=TRUE}
+Study1_processing5 <- Study1_processing4 %>% 
+  mutate(across(.cols = 1:26, ~na_if(., 8)))
+```
+
+```{r}
+
+Study1_processing6 <- Study1_processing5 %>% 
+    mutate(reg_stat = ifelse(grepl(1, reg_stat), 1, 
+                             ifelse(grepl(2, reg_stat), 0, NA)))
+
+Study1_processing7 <- Study1_processing6 %>% 
+  mutate(across(.cols = 8:14, ~ ifelse(. == 2, 0, 1))) %>% 
+  mutate(across(.cols = 16:17, ~ ifelse(. == 2, 0, 1)))
+
+
+```
+
+```{r}
+
+Study1_processing8 <- Study1_processing7 %>% 
+  mutate(cs1 = ifelse(treat_rand1 == 1 & Q12_1 == 1 & Q12_2 == 1 & Q12_3 == 0 & 
+                        Q12_4 == 1 & Q12_5 == 0 & Q12_6 == 0 & Q12_7 == 0, 1, 0)) %>% 
+  mutate(cs3 = ifelse(treat_rand1 == 3 & Q12_1 == 1 & Q12_2 == 0 & Q12_3 == 1 & 
+                        Q12_4 == 0 & Q12_5 == 1 & Q12_6 == 0 & Q12_7 == 0, 1, 0)) %>% 
+  mutate(cs2 = ifelse(treat_rand1 == 2 & Q12_1 == 1 & Q12_2 == 1 & Q12_3 == 0 & 
+                        Q12_4 == 1 & Q12_5 == 0 & Q12_6 == 0 & Q12_7 == 0, 1, 0)) %>% 
+  mutate(cs4 = ifelse(treat_rand1 == 4 & Q12_1 == 1 & Q12_2 == 0 & Q12_3 == 1 & 
+                        Q12_4 == 0 & Q12_5 == 1 & Q12_6 == 0 & Q12_7 == 0, 1, 0))
+
+Study1_processing9 <- Study1_processing8 %>% 
+  mutate(correct_id_symp = ifelse(cs1 == 1 | cs2 == 1 | cs3 == 1 | cs4 == 1, 1, 0))
+
+```
+
+```{r}
+
+Study1_processing10 <- Study1_processing9 %>% 
+  rename(info_search_look_up = Q17_6,
+         info_search_talk_fam = Q17_7) %>% 
+  select(-c(27:30))
+
+Study1_processing11 <- Study1_processing10 %>% 
+  mutate(disease_spread_id_correct = ifelse(virus_spread == 1, 1, 0))  
+
+study <- Study1_processing11
+  
+```
+
+In class this week we have looked at how emotion can influence what information we put more emphasis on processing and remembering. This is of interest in politics as if a candidate can play on human emotion, such as anxiety, then they gain an advantage as the audience will be more likely to remember them and their message, and thus vote for them. This idea is not new, and tapping "the power of emotion" (Gross 2008) is an established way to support your goals. To explore the relationship between emotion and information uptake we looked at  Clifford and Jerit's (2018) method and findings. The data set included many different metrics and responses from the two different studies of 1000 and 748 people respectively. Both studies had four different conditions tested, but study two focused more specifically on disgust than study one, which also looked at anxiety. They had three main hypotheses about how the visceral emotion of disgust may impact an individuals need to search for and uptake informaution:
+
+  - "An object that induces disgust should increase retention of information related to the source of the emotion"
+
+  - "While disgust may improve memory of the source of the emotional arousal, it will impair recall of information 
+    that is not the primary elicitor of disgust."
+
+  - "A person who feels disgusted about a threat will avoid the source of disgust and new information about the topic."
+
+To test this the studies gave the four different 'treatments' a scenario in which a new infectious disease was spreading, and either told them (study 1) or showed them (study 2) information that would increase the level of disgust. The individual would then be asked to recall information in order to evaluate these hypotheses. 
+
+
+
+
+```{r}
+
+study1 <- study %>% 
+  mutate(disgust_mean = rowMeans(select(., 2:4))) %>% 
+  mutate(anxiety_mean = rowMeans(select(., 5:7)))
+
+
+study1 %>% 
+  filter(treat_rand1 == 1) %>% 
+  summarise(anx_avg = mean(anxiety_mean, na.rm = TRUE)) # = 2.275
+
+study1 %>% 
+  filter(treat_rand1 == 1) %>% 
+  summarise(dis_avg = mean(disgust_mean, na.rm = TRUE)) # = 2.151
+
+study1 %>% 
+  filter(treat_rand1 == 2) %>% 
+  summarise(anx_avg = mean(anxiety_mean, na.rm = TRUE)) # = 2.435
+
+study1 %>% 
+  filter(treat_rand1 == 2) %>% 
+  summarise(dis_avg = mean(disgust_mean, na.rm = TRUE)) # = 2.185
+
+study1 %>% 
+  filter(treat_rand1 == 3) %>% 
+  summarise(anx_avg = mean(anxiety_mean, na.rm = TRUE)) # = 2.252
+
+study1 %>% 
+  filter(treat_rand1 == 3) %>% 
+  summarise(dis_avg = mean(disgust_mean, na.rm = TRUE)) # = 2.507
+
+study1 %>% 
+  filter(treat_rand1 == 4) %>% 
+  summarise(anx_avg = mean(anxiety_mean, na.rm = TRUE)) # = 2.284
+
+study1 %>% 
+  filter(treat_rand1 == 4) %>% 
+  summarise(dis_avg = mean(disgust_mean, na.rm = TRUE)) # = 2.526
+
+
+
+# Anxiety
+
+study1 %>% 
+  filter(treat_rand1 == 1 | treat_rand1 == 2) %>% 
+  t.test(anxiety_mean ~ treat_rand1, .)
+
+study1 %>% 
+  filter(treat_rand1 == 3 | treat_rand1 == 4) %>% 
+  t.test(anxiety_mean ~ treat_rand1, .)
+
+# Disgust
+
+study1 %>% 
+  filter(treat_rand1 == 2 | treat_rand1 == 4) %>% 
+  t.test(disgust_mean ~ treat_rand1, .)
+
+study1 %>% 
+  filter(treat_rand1 == 1 | treat_rand1 == 3) %>% 
+  t.test(disgust_mean ~ treat_rand1, .)
+
+```
+
+
+
+```{r}
+Study2_preprocess <- read_dta("Study2ReplicationData.dta")
+
+Study2 <- Study2_preprocess %>%
+  #grouping similar treatment conditions and computing time spent viewing treatment
+  mutate(treatment = case_when(c_control==1 ~ 1, 
+                               c_bothd==1|c_bothm==1 ~ 4, 
+                               c_disguste==1|c_disgustl==1 ~ 2, 
+                               c_mapl==1|c_mape==1 ~3),
+         page_time = rowMeans(select(., contains("t_c")), na.rm = TRUE)) %>% 
+  #recoding NAs as 0 for country and symptom variables
+  mutate(across(contains(c("countries","symptoms")), ~ifelse(is.na(.x),0,.x))) %>%
+  #recoding infosession as binary
+  mutate(across(c(infosession,learn), ~ifelse(.x==1,1,0))) %>% 
+  #renaming country variables
+  rename_with(.cols= contains("countries"), ~c("Mexico", 
+                                               "SouthAmerica", 
+                                               "Africa", 
+                                               "Canada", 
+                                               "Russia", 
+                                               "Europe")) %>% 
+  #renaming symptom variables
+  rename_with(.cols = contains("ksymptoms"), ~c("fever", 
+                                                "headache", 
+                                                "jointpain", 
+                                                "rash", 
+                                                "bleeding", 
+                                                "nausea", 
+                                                "seizures", 
+                                                "breathing")) %>%
+  #renaming info search variables and other disease knowledge info
+  rename_with(.cols = contains("search"), ~c("infosearch", 
+                                             "talk")) %>% 
+  rename(symptpercent = kpercent, length = klength) %>% 
+  #renaming emotion variables
+  rename_with(.cols = contains("emotion"), ~paste0("E_", c("disgust", 
+                                                           "gross", 
+                                                           "resentment", 
+                                                           "revulsion", 
+                                                           "hateful", 
+                                                           "angry", 
+                                                           "anxiety", 
+                                                           "nervous", 
+                                                           "worry"))) %>% 
+  #creating indicator variable for correct identification of symptoms and at risk countries 
+  mutate(country_correct = as.numeric(paste0(Mexico, SouthAmerica, Africa, Canada, Russia, Europe))==111000,
+         symptoms_correct = as.numeric(paste0(fever, headache, jointpain, rash, bleeding, nausea, seizures, breathing)==11111000)) %>%
+  #deleting irrelevant variables
+  select(-contains("c_")) %>%
+  #reordering treatment as first variable
+  relocate(treatment)
+```
+
+For this weeks blog I wanted to focus on study two, as although it is also a two by two study, it is easier to see the relationship between disgust and information uptake as the cause of this information uptake is less effected by compounding factors. While study two differs from study one in that it elicits disgust with images rather than words, there is only one emotion that the study is targeting, thus any causality is more explicit. To start with, we can compare the two groups with different disgust treatments to see if they succeeded in manipulating emotion. To do so I ran a t-test: 
+
+
+```{r}
+
+library(broom)
+
+study2 <- Study2 %>% 
+  mutate(disgust_mean = rowMeans(select(., c(22, 23, 25)))) %>% 
+  mutate(anxiety_mean = rowMeans(select(., 28:30))) %>% 
+  mutate(anger_mean = rowMeans(select(., c(24, 26, 27))))
+
+emotion_t_test <- study2 %>% 
+  mutate(disgust_img = ifelse(treatment == 1 | treatment == 3, 0, 1)) 
+
+emotion_t_test %>% t.test(disgust_mean ~ disgust_img, .) 
+emotion_t_test %>%  t.test(anxiety_mean ~ disgust_img, .)
+emotion_t_test %>%  t.test(anger_mean ~ disgust_img, .)
+
+
+```
+
+
+As can be seen, the t-test shows the treatment has a statistically significant effect in inciting disgust but not with the other emotions. It is also worth exploring the potential influence it has on other emotions, but when studying the effect the images have on anxiety or anger, there is no statistical significance. A better way to view where this significance arises from is to plot each emotion as a distribution by treatment conditions:
+
+
+
+```{r}
+
+ggplot(emotion_t_test, aes(x = disgust_mean, fill = as.factor(disgust_img))) +
+  geom_histogram(aes(y=..density..), position = "dodge", bins = 10) +
+  geom_density(alpha = 0.2) +
+  theme_classic() +
+  labs(x = "Mean Disgust",
+       y = "Density",
+       subtitle = "Emotion on an increasing scale") +
+  theme(legend.position = 'none')
+
+ggplot(emotion_t_test, aes(x = anger_mean, fill = as.factor(disgust_img))) +
+  geom_histogram(aes(y=..density..), position = "dodge", bins = 10) +
+  geom_density(alpha = 0.2) +
+  theme_classic() +
+  labs(x = "Mean Anger",
+       y = "Density",
+       subtitle = "Emotion on an increasing scale") +
+  theme(legend.position = 'none')
+
+ggplot(emotion_t_test, aes(x = anxiety_mean, fill = as.factor(disgust_img))) +
+  geom_histogram(aes(y=..density..), position = "dodge", bins = 10) +
+  geom_density(alpha = 0.2) +
+  theme_classic() +
+  labs(x = "Mean Anxiety",
+       y = "Density",
+       subtitle = "Emotion on an increasing scale") +
+  theme(legend.position = 'none')
+
+```
+To asses whether the images are a visual reason for the uptake of information that isn't related to disgust this study included a control that was an image of a map. To see if this was significant I compared the accuracy of affected country recall in conditions with the map and without, and without the disgusting images. The result of this proved to be just over the threshold for significance at 0.059, but when comparing all four of map and non-map the significance was much less at 0.719. By contrast, the statistical significance of remembering information (in this case symptoms) with no picture compared to disturbing pictures is 0.4696, which is not statistically significant, suggesting that disturbing imagery doesn't increase information recall. So if a politician wanted to influence a voter base then, while playing to their emotions is important, imagery that is disgusting is not going to help them remember other important information as information recall of things that aren't the source of disgust will be impaired. 
+
+
+```{r}
+
+# map recall 
+emotion_t_test %>% 
+  filter(treatment == 1 | treatment == 3) %>% 
+  t.test(country_correct ~ treatment, .)
+
+map_t_test <- study2 %>% 
+  mutate(img = ifelse(treatment == 1 | treatment == 3, 1, 0)) 
+
+# all images - so sig. is lower 
+map_t_test %>% 
+  t.test(country_correct ~ img, .)
+
+# dist. img. recall 
+emotion_t_test %>% 
+  filter(treatment == 1 | treatment == 2) %>% 
+  t.test(symptoms_correct ~ treatment, .)
+
+
+emotion_t_test %>% 
+  ggplot(aes(x = as.factor(disgust_img), fill = as.factor(symptoms_correct))) +
+  geom_bar(position = "dodge")
+
+emotion_t_test %>% 
+  ggplot(aes(x = as.factor(disgust_img), fill = as.factor(country_correct))) +
+  geom_bar(position = "dodge")
+
+
+emotion_t_test %>% t.test(symptoms_correct ~ disgust_img, .) 
+
+```
+
+
+
+```{r}
+
+study1 %>% 
+  lm(disgust_mean ~ ideology, .) %>% 
+  tidy()
+
+```
+
+
