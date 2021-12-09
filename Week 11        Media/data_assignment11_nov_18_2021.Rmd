@@ -1,6 +1,6 @@
 ---
 title: 'Data Exploration: Media'
-author: "Your name here"
+author: "Paddy Adams"
 date: "November 18, 2021"
 output:
   pdf_document: default
@@ -12,6 +12,7 @@ urlcolor: blue
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -19,37 +20,23 @@ library(lmtest)
 library(sandwich)
 library(estimatr)
 library(stargazer)
+library(effsize)
+
 ```
 
-This week we examined patterns of media consumption (Barbera et al. 2015) as well as the effects of media exposure on political attidues (Iyengar and Kindar 1987; Moehler and Conroy-Krutz 2016; Asimovic 2021). In this Data Exploration Assignment, we will look more closely at patterns of media consumption as a way to gather information. In their 2020 paper "Partisan Gaps in Political Information and Information-Seeking Behavior: Motivated Reasoning or Cheerleading?", Peterson and Iyengar seek to understand whether partisan gaps in political knowledge (like, for example, on the established fact that humans drive climate change) are the result of genuine differences in beliefs or merely partisan cheerleading. 
+This week, to follow on from my media polarisation analysis from last weeks data, we looked in more detail at patterns of media consumption and how it effects political attitudes. The data comes from Peterson and Iyengar's 2020 paper: "Partisan Gaps in Political Information and Information-Seeking Behavior: Motivated Reasoning or Cheerleading?" and contains respondents answers to true or false questions based on current events and opinions they hold, and the dependent outcomes where the news source they choose (from a choice spanning left, right, central and expert news sources), and the information they gain from their choice measured by the true/false questions. The random treatment introduced was a small payment each time the respondent gave a correct answer. This allowed them to explore their hypothesis in a couple of ways best described in their own words:
 
-On the one hand, we might think that, one way or another, partisans collect information that supports one viewpoint (e.g. that climate change isn't real or isn't cause by humans). What results is a genuine belief in an incorrect answer. However, partisans may also know the correct answer but give the incorrect answer that supports their party (i.e. partisan cheerleading).
+"If cheerleading is the predominant explanation for these differences, providing incentives should markedly weaken the partisan divide, as partisans would be expected to revert to their “true” state of knowledge when responding. On the other hand, if the motivated reasoning hypothesis holds, then misinformation is genuine and incentives should have minimal effects on partisan divides across these items.
 
-In their experiment, the authors first randomly assign individuals to either receive an incentive for correct answers to factual questions (the treatmTent) or not (the control). Respondents were then asked a factual question about topics (seen below in able 1 from the paper) that were rife with misinformation at the time of the experiment (for example, whether Obama ordered wiretaps on Trump's phones, which he did not). But before they answered the questions, respondents could choose from five sources that would give them information about the topic. The sources included left-leaning (e.g., HuffPost, MSNBC), right-leaning (e.g., FOX, Breitbart), expert (e.g., Bureau of Labor Statistics), or mainstream (e.g., NYT, CNN) sources. Finally, respondents answered a true/false question (the particular questions are available in the paper). Note that the experiment was conducted on two surveys that differed slightly in the topics they used.
+Second, we apply the same logic to assess the effect of financial incentives on respondents’ information-seeking behaviour and, specifically, whether the presence of incentives encourages the use of unbiased or nonpartisan news providers (versus co-partisan news sources). Again, if cheerleading is at work, we would expect reliance on partisan sources to be weakened among incentivised respondents, whereas the motivated reasoning account predicts no differences in information preferences across the experimental conditions." (Peterson and Iyengar 2020)
 
-Below is Table 1 from the paper. Starting on the left, we have the topic and its associated political knowledge item, as well as the incorrect response to the item. In the last column is the party valence, which is the partisan direction in which an incorrect response to the item points. For example, believing that 40\% of firearm sales in the U.S. occur without a background check is an incorrect belief that is reinforced by group membership in the Democratic party.
+The questions asked were as follows:
+
 
 ```{r, echo=FALSE, out.width = "100%"}
 knitr::include_graphics("./pi_table1.png")
 ```
 
-For a subset of respondents, the authors also obtained online website browsing behavior. Some YouGov panelists have agreed to have their web activity tracked in return for YouGov points. From these data several variables are derived that quantify real-world web browsing behavior.
-
-If you have a question about any part of this assignment, please ask! Note that the actionable part of each question is **bolded**.
-
-# Media and the Partisan Information Divide
-
-**Data Details:**
-
-* File Names: \texttt{misinfo.combined.RData}; \texttt{news.choice.RData};  \texttt{combined.survey.demos.dea.RData}
-
-* Source: These data are from Peterson and Iyengar (2020).
-
-Variable Name         | Variable Description
---------------------- | --------------------------------------
-In lieu of a variable description in the assignment itself, we have given you the codebook documents available in the replication data from the paper. You can find them in the files \texttt{misinfo_combined_codebook.pdf}, \texttt{news_choice_codebook.pdf}, and \texttt{ncombined_survey_demos_codebook.pdf}.
-
-First, let's read in the data, which is in an .RData object. Using this file type to save R objects allows you to save all attributes of an object that may be lost if you save it to a .csv. You can also save more types of objects.
 
 ```{r}
 
@@ -57,115 +44,146 @@ load("misinfo.combined.RData")
 
 ```
 
-## Question 1
-As usual, let's take a closer look at the data. 
 
-# Part a
-**What is the unit of observation in the `misinfo.combined` dataset? How is it different from the data we usually see from surveys?**
+To begin with, as per usual, I looked at an overview of the data. This histogram shows how many questions each respondent got right out of the five asked. As cam be seen from the graph below, the general political knowledge of the respondents is pretty good, with the modal number being 4 correct answers out of the five.
 
-# Part b
-**Create a bar plot of the main outcome of interest, the number of questions that were correctly answered by respondents. You will need to do some manipulation of the data before you can make this plot. What does this distribution tell you about factual political knowledge in the electorate?**
 
-# Part c
-**Split the bar plot you made in part b by treatment status - that is, by whether or not the respondent received an incentive for responding correctly. In addition, conduct a test of difference in means between the unincentivized and incentivized conditions. Did the incentives increase correct answers? If so, is it a meaningful increase?**
+```{r}
 
-# Question 2
+info <- misinfo.combined %>% 
+  group_by(caseid) %>% 
+  mutate(total_correct = sum(correct.answer, na.rm = TRUE))
+  
+ggplot(info, aes(x = total_correct)) +
+  geom_histogram(binwidth = 0.5, fill = 'darkred') +
+  theme_classic()
 
-## Part a
 
-While the data we just loaded has most of the main variables, it is missing the demographics of the respondents. Demographic data are available in a different data set. To combine the two, we need to merge the datasets together. **Look at the different types of joining functions available from `dplyr`. You can see the four different types by running `?dplyr::join` from the console. You can also read more about these joins and see graphical summaries in the *R for Data Science* lesson (https://r4ds.had.co.nz/relational-data.html#outer-join) Choose which join you think is appropriate for this context and explain your reasoning. Once you have done that, try performing the merge using the function you chose.**
+```
+
+
+To quickly explore how the treatment changed the responses I split this result by treatment status and looked at statistical significance. A t-test showed that the result was very statistically significant. However, Cohen's d test suggests that the effect of the treatment was small - this in turn suggests that while the treatment was statistically significant, the actual cause of this significance could be in part down to sampling error or other compounding factors. This being said, when compared to last weeks data and corresponding Cohen's d test of the conditions I was exploring this shows a much larger effect size and the difference is at least of 'small' meaning.
+
+
+```{r}
+
+ggplot(info, aes(x = total_correct)) +
+  geom_histogram(binwidth = 0.5, fill = 'darkred') +
+  facet_wrap(~ incentive) +
+  theme_classic() +
+  labs(title = "By Treatment",
+       subtitle = "Treatment Was Incentive to Answer Correctly")
+
+info %>% 
+  group_by(incentive) %>% 
+  t.test(total_correct ~ incentive, .)
+
+info %>% 
+  group_by(incentive) %>% 
+  cohen.d(total_correct ~ incentive, .)
+
+
+```
+
 
 ```{r}
 
 load("combined.survey.demos.dea.RData")
 
+combined <- info %>% 
+  left_join(combined.survey.demos, by = "caseid")
+
 ```
 
-## Part b
 
-When merging (or joining; the two are used interchangeably) two datasets, it's always important to check that your merge worked correctly. One way to do that is to check that the number of rows in the new dataset is correct.  **Check that the number of rows in the new dataset is equal to the number of rows in the `x` dataset. If the number of rows differs, go back and check your merge.**
-
-## Part c
-
-**Now check the number of columns in the resulting dataframe after the merge. Explain why the new merged dataset has that number of columns.**
-
-# Question 3
-
-Now that we've merged in the data, let's see if some people are better at answering these factual questions than others. Choose one or more demographic variables that you think might influence correctness on the misinformation items and formulate a hypothesis about how they will be related. You can also consider whether some people will answer some types of questions more accurately than others (e.g. economic vs. social/cultural issues). Perform whatever analyses you think are appropriate to investigate your hypothesized relationship.
+As the treatment appeared to have relatively little impact on the response, I decided to instead explore any correlation, and potential causation, between demographic variables in the data and the number of questions answered correctly.
 
 
-# Question 4
 
-Now let's look at whether there is in fact a partisan divide in how partisans answer these factual questions. To do so, we'll look at the unincentivized condition.
-
-## Part a
-
-**Why were the authors of the study interested in the effect of incentives on partisan information divides? What are the two competing explanations of the partisan information divide that they are trying to distinguish between?**
-
-## Part b
-
-**Among individuals who did not receive incentives for correct answers, report the proportion of Democrats and Republicans who answered each question correctly, as well as the absolute difference between the two. That is, for each question, report the proportion of Democrats who answered correctly alongside the proportion of Republicans who answered correctly, and the absolute value of the difference between them (which corresponds to the partisan divide).**
-
-
-## Part c
-
-Do partisans gravitate towards different types of sources of information? Here we'll see if respondents in the survey tend to choose sources that conform to their prior beliefs. **Find the proportion of respondents who chose copartisan, outpartisan, expert, and mainstream sources for each topic. Do some of the topics inspire different choices of source when looking for information?**
-
-## Part d
-
-Does strength of party ID matter for which sources respondents chose? **Find the proportion of strong vs. weak partisans who chose each type of source (copartisan, outpartisan, expert, mainstream), regardless of topic. What do you see? Is this what you would expect?**
-
-# Question 5
-
-Now that we've looked at the partisan divide among those who didn't receive incentives, let's take a look at the effect of incentives on the partisan information gap. **Fit the following model twice; once among those who received incentives, and once among those who did not receive incentives. Describe and discuss what the results mean for the impact of incentives on the partisan information gap.**
-
-$$
-\begin{aligned}
-\text{divide.coding} \sim \text{pid.binary}
-\end{aligned}
-$$
-
-Be sure to take a close look at the way `divide.coding` is constructed and interpret your results carefully. **Data science students can extend this question by fitting the model with an interaction between `pid.binary` and `incentive` among all respondents.**
-
-# Question 6: Data Science Question
-
-In the paper, the authors use what are called "robust standard errors" in their regression analyses. Robust to what? you might wonder. Before we get to that, recall that one of the key assumptions of ordinary least squres (OLS) regression is that the variance of the residuals is constant across values of the predictor(s). When this assumption is violated, the variance of the OLS estimator becomes biased, along with the standard errors on the coefficients. This in turn makes inferences based on those standard errors (e.g. p-values and confidence intervals) questionable.
-
-In statistics jargon, non-constant variance of the residuals is called "heteroskedasticity." The image below shows the relationship between two variables `x` and `y`. In this case, the residuals are heteroskedastic because the distance between the black regression line and the data points is smaller at lower values of `x` and larger at higher values of `x`. Therefore, the assumption of constant variance of the residuals (homoskedasticity) does not hold. 
-
-```{r, echo=FALSE, out.width = "100%"}
-knitr::include_graphics("./heteroskedasticity.png")
-```
-
-If the assumption of constant variance of the residuals holds, that means the variance of the residuals is indeed constant, which is referred to as "homoskedasticity." Pay attention to the prefixes hetero- (different) and homo- (same). When the residuals are heteroskedastic, we need to adjust our regression model to account for it. We do this with heteroskedasticity-robust standard errors! You'll sometimes see these called heteroskedasticity-consistent (HC) standard errors as well.
-
-## Part a
-
-Before we make an adjustment, let's first check to see if the residuals of the model we fit in the last question are indeed heteroskedastic. To do so, you can use the Breusch-Pagan (BP) test (accomplished in R with the `bptest()` from the `lmtest` package). The BP test is a hypothesis test where the null hypothesis is that the residuals are homoskedastic and the alternative hypothesis is that they are heteroskedastic. If you obtain a p-value from this test that is less than .05, you can reject the null hypothesis and conclude that the residuals are heteroskedastic. 
-
-**Condust a Breusch-Pagan test on the model you fit in the last question that included all respondents. Are the residuals of this model heteroskedastic?**
-
-## Part b
-
-**Based on your conclusion in part a, implement the correct standard errors for your model. If you find that the residuals are heteroskedastic, use the function `coeftest(your_lm_here, vcov. = vcovHC(your_lm_here, type = 'HC1'))`, using your linear model object. Compare the news standard errors you find in this question to the ones you found in the previous question. How are they different?**
-
-# Question 7
-
-# Part a
-
-In this paper, the authors compared information-gathering behavior in their survey to real-world information gathering. Some of their respondents agreed to have their browsing activity tracked, allowing the authors to observe which news websites the respondents visited. They then created average "alignment scores" for each respondent based on the alignment scores for the websites they visited. These alignment scores are essentially measures of the partisan leaning of news websites, where alignment scores close to -1 are left-leaning and alignment scores close to 1 are right-leaning. **Visualize the distribution of alignment scores. What does the distribution look like? Is it skewed? Multi-modal? What does this say about how people get their online news?**
-
-First we need to load the news choice data:
 ```{r}
 
-load("news.choice.RData")
+combined <- combined %>% 
+ mutate(race = ifelse(white == 1, 1,
+                      ifelse(black == 1, 2,
+                             ifelse(hispanic == 1, 3, 
+                                    ifelse(other.race == 1, 4, NA)))))
+
+
+combined %>% 
+  group_by(caseid) %>% 
+  ggplot(., aes(x = total_correct)) +
+    geom_density(adjust = 3, fill = "darkred") +
+    facet_wrap( ~ race) +
+    theme_classic() +
+    labs(title = "By Race",
+         subtitle = "1 = White, 2 = Black, 3 = Hispanic, 4 = Other",
+         y = "Density",
+         x = "Total Correct")
+
+combined1 <- combined %>% 
+  mutate_at(17, ~replace(., is.na(.), 2))
+
+combined2 <- combined1 %>% 
+  mutate(pid.binary = ifelse(pid.binary == 1, "Democrat", 
+                             ifelse(pid.binary == 0, "Republican", 
+                                    ifelse(pid.binary == 2, "Independent", NA))))
+
+combined2 %>% 
+  group_by(caseid) %>% 
+  ggplot(., aes(x = total_correct)) +
+    geom_density(adjust = 3.5, fill = "darkred") +
+    facet_wrap( ~ pid.binary) +
+    theme_classic() +
+    labs(title = "By Ideology",
+         y = "Density",
+         x = "Total Correct")
 
 ```
 
-## Part b
+As respondent numbers changed by group I have plotted these visualizations by density so that comparing between them is easier. I chose the two most obvious demographic variables - race and political ideology. When comparing by race, the white and 'other' respondents had a high proportion responding correctly to 4 questions. This is a higher correct response rate to both black and hispanic respondents, who can be seen to have a density curve shifted slightly further left; here black respondents actually had a peak not at four like the other three but at 3 correct responses. The reasons for a difference here may be most easily explained by a lower interest/following of current events, resulting in more incorrect responses. To understand why there is potentially less interest in current political events among black respondents it would be interesting to further explore how income and age compound this difference when compared to other demographics. I think the most simple answer would be a dissatisfaction with politics and thus a lack of interest in following news relating to current political events, but there may be many other reasons.
 
-**Look in the replication files in the Google Drive. These are the actual replication files prepared by the authors. Look through those files and use them to recreate table 6 of the paper. Discuss what you find.**
 
-# Question 8
+I wanted to further look at how reported ideology effected the number of correct responses. This is of particular interest as partisan media's reporting of current events has greatly impacted the spread of misinformation and, to be reductive, led to polarization about hugely important political issues and helped determine the recent course of politics. 
 
-Take a look at the other variables available in the data. Explore any further relationships between the variables that you're interested in.
+```{r}
+
+x <- combined2 %>% 
+  filter(incentive == 0) %>% 
+  filter(pid.binary == "Democrat") %>% 
+  group_by(pid.binary, topic) %>%
+  summarize(prop_dem = mean(correct.answer, na.rm = TRUE))
+
+y <- combined2 %>% 
+  filter(incentive == 0) %>% 
+  filter(pid.binary == "Republican") %>% 
+  group_by(pid.binary, topic) %>%
+  summarize(prop_rep = mean(correct.answer, na.rm = TRUE))
+
+xy <- x %>% 
+  left_join(y, by = "topic") %>% 
+  mutate(diff = abs(prop_dem - prop_rep)) %>% 
+  arrange(desc(diff)) %>% 
+  select(2,3,5,6)
+
+library(gt)
+
+xy %>% 
+  gt() %>% 
+  tab_header(title = "Partisan Information Divides in Unincentivized Conditions") %>% 
+  cols_label(topic = "Topic",
+             prop_dem = "Share Correct (Dem)",
+             prop_rep = "Share Correct (Rep)",
+             diff = "Partisan Divide") %>% 
+  fmt_number(., columns = vars("prop_dem", "prop_rep", "diff"), decimals = 2)
+  
+
+
+```
+
+
+This table shows how people who align with each party differ in correct responses to each of the five questions, and the resulting partisan divide between the two. What is interesting here is that for quite a few questions democrats almost entirely respond correctly but republicans only answer the same questions with mostly only around half being correct. This is more than coincidental and clearly shows a very polarized opinion/beliefs held by many republican respondents, which can then be played on by whoever is looking for their voter support. In the instance where more republicans responded correctly and there was a large partisan divide, still only 56% republicans responded correctly - contrasting with the almost entirely correct responses that democrats had to other questions that generated partisan divide. Without laboring the point here, this clearly shows that either information is reaching those of different ideologies from partisan news sources with different 'filters' on what is important/true, or there are other issues driving polarization and its negative impact on modern politics.
+
+
+
+
+
