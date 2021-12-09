@@ -1,0 +1,151 @@
+---
+title: "final_proj_analysis"
+author: "Adams"
+date: "07/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(tidyverse)
+library(gt)
+library(effsize)
+library(stargazer)
+
+x <- read.csv("1372_clean.csv")
+
+```
+
+```{r}
+
+# demographic breakdown for looking at representaiton 
+
+x %>% 
+  group_by(race) %>% 
+  summarise(cnt = n()) %>%
+  mutate(freq = formattable::percent(cnt / sum(cnt))) %>% 
+  arrange(race) %>% 
+  mutate(race = c("White", "Black", "Hispanic", "Asian", "Native", "Other", "NA")) %>%
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header("Survey Ethnicity")
+  
+
+x %>% 
+  group_by(gender) %>% 
+  summarise(cnt = n()) %>%
+  mutate(freq = formattable::percent(cnt / sum(cnt))) %>% 
+  mutate(gender = c("Female", "Male", "Non-Binary", "NA")) %>% 
+  gt() %>% 
+  tab_options(column_labels.hidden = TRUE) %>% 
+  tab_header("Survey Gender")
+
+
+
+```
+
+H1: Respondents identifying as Conservative or Moderate will engage in higher levels of self-censorship compared to Liberal-identifying respondents.
+
+
+```{r}
+
+# new variable for moderate and conservative (pid5 >= 3)
+
+h1 <- x %>% mutate(right = case_when(pid5 >= 3 ~ 1,
+                               pid5 < 3 ~ 0))
+
+# stat testing 
+
+h1_t.test <- h1 %>% t.test(disp_ideology ~ right, .)
+h1_cohen <- h1 %>% cohen.d(disp_ideology ~ right, .)
+
+# visualization by proportion 
+
+h1_prop <- h1 %>% 
+  group_by(pid5) %>% 
+  mutate(n = mean(disp_ideology)) %>% 
+  ggplot(aes(x = pid5, y = n)) +
+  geom_col(position = 'dodge')
+
+# experimental graph including 'follow_gov'
+
+h1_also_follow_gov <- h1 %>% 
+  group_by(pid5, follow_gov) %>% 
+  mutate(n = mean(disp_ideology)) %>% 
+  ggplot(aes(x = pid5, y = n, fill = as.factor(follow_gov))) +
+  geom_col(position = 'dodge')
+
+# disp_ideology by pid5 
+
+h1_count <- h1 %>% 
+  group_by(pid5, disp_ideology) %>% 
+  summarise(n = sum(pid5, na.rm = TRUE)) %>% 
+  ggplot(aes(x = pid5, y = n, fill = as.factor(disp_ideology))) +
+  geom_col(position = position_dodge2(reverse = TRUE, padding = 0.05)) +
+  theme_classic()
+  
+# stargazer regression models 
+
+model <- h1 %>% 
+  lm(disp_ideology ~ pid5 + gender + race + rel_stat + follow_gov, .)
+
+h1_stargazer <- stargazer(model, type = 'text')
+
+```
+
+H2: Individuals who report a higher level of political engagement will display more affective polarization in their dating app usage.
+
+```{r}
+
+# general observation of 'follow_gov' stat
+
+x %>% 
+  ggplot(aes(x = follow_gov)) +
+  geom_histogram(stat = 'count')
+
+# define partisanship as the two ends of the pid5 spectrum excluding '3',
+# then taking those who identify as liberal and taking their opinion of 
+# displayed out-party. If it is 'much less likely' then counted polarized 
+# on a binary scale. visa versa with those identifying as conservative 
+# also replacing NA values with 0 
+
+h2 <- x %>% 
+  mutate(right = case_when(pid5 > 3 ~ 1,
+                           pid5 < 3 ~ 0)) %>% 
+  mutate(polarized = ifelse(right == 1 & like_liberal == 1, 1,
+                            ifelse(right == 0 & like_conservative == 1, 1, 0))) %>% 
+  mutate_at(14, ~ replace(., is.na(.), 0)) 
+
+# observation count of polarized 
+
+h2 %>% filter(polarized == 1) %>% nrow()
+
+# observation of average 'follow_gov' of the two groups
+
+h2 %>% 
+  group_by(polarized) %>% 
+  summarise(avg = mean(follow_gov, na.rm = TRUE)) 
+ 
+# regression 
+
+h2 %>% 
+  filter(follow_gov < 3) %>% 
+  lm(polarized ~ follow_gov, .)
+
+# t.test shows no impact whatsoever - to be discussed 
+
+h2 %>% 
+  filter(follow_gov < 3) %>% 
+  t.test(polarized ~ follow_gov, .)
+
+# plot the findings 
+
+h2 %>% 
+  ggplot(aes(x = follow_gov, fill = as.factor(polarized))) +
+  geom_histogram(stat = 'count', position = 'dodge')
+
+
+```
+
+
+

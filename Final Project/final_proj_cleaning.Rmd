@@ -1,0 +1,153 @@
+---
+title: "Final Project"
+author: "Adams"
+date: "22/11/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+library(tidyverse)
+
+
+data <- read_csv("1372.csv", skip = 1) %>% 
+  select(19:44, 6) %>% 
+  tail(-1)
+
+
+```
+
+```{r, cleaning}
+
+# change column names
+
+data1 <- data %>% 
+  rename_with(.cols = everything(), ~c("how_often",
+                                       "follow_gov",
+                                       "disp_ideology",
+                                       "c",
+                                       "m",
+                                       "l",
+                                       "c1",
+                                       "l1",
+                                       "m1",
+                                       "l2",
+                                       "c2",
+                                       "m2",
+                                       "l3",
+                                       "m3",
+                                       "c3",
+                                       "m4",
+                                       "l4",
+                                       "c4",
+                                       "m5",
+                                       "c5",
+                                       "l5",
+                                       "rel_stat",
+                                       "race",
+                                       "gender",
+                                       "pid5",
+                                       "self_rating",
+                                       "duration"))
+
+# merge all the randomized columns into one
+
+data2 <- data1 %>% unite('like_conservative', c('c', 'c1', 'c2', 'c3', 'c4', 'c5'), remove = TRUE) %>% 
+  unite('like_moderate', c('m', 'm1', 'm2', 'm3', 'm4', 'm5'), remove = TRUE) %>% 
+  unite('like_liberal', c('l', 'l1', 'l2', 'l3', 'l4', 'l5'), remove = TRUE) 
+
+# remove full NA rows
+
+data2.5 <- data2 %>% 
+  select(-duration) %>% 
+  filter(rowSums(is.na(.)) != ncol(.)) 
+
+# change values to numeric for more/less likely questions: 1 through 5 
+
+data3 <- data2.5 %>% 
+  mutate(like_conservative = ifelse(grepl("Much less likely", like_conservative), 1,
+                                    ifelse(grepl("Somewhat less likely", like_conservative), 2,
+                                          ifelse(grepl("Unchanged", like_conservative), 3,
+                                                 ifelse(grepl("Somewhat more likely", like_conservative), 4, 
+                                                        ifelse(grepl("Much more likely", like_conservative), 5, NA)))))) %>% 
+    mutate(like_moderate = ifelse(grepl("Much less likely", like_moderate), 1,
+                                    ifelse(grepl("Somewhat less likely", like_moderate), 2,
+                                          ifelse(grepl("Unchanged", like_moderate), 3,
+                                                 ifelse(grepl("Somewhat more likely", like_moderate), 4,
+                                                        ifelse(grepl("Much more likely", like_moderate), 5, NA)))))) %>% 
+    mutate(like_liberal = ifelse(grepl("Much less likely", like_liberal), 1,
+                                    ifelse(grepl("Somewhat less likely", like_liberal), 2,
+                                          ifelse(grepl("Unchanged", like_liberal), 3,
+                                                 ifelse(grepl("Somewhat more likely", like_liberal), 4, 
+                                                        ifelse(grepl("Much more likely", like_conservative), 5, NA)))))) 
+
+# numeric values for how_often used: 1 through 4
+
+data4 <- data3 %>% 
+  mutate(how_often = ifelse(grepl("Very", how_often), 4,
+                            ifelse(grepl("Sometimes", how_often), 3,
+                                   ifelse(grepl("Rarely", how_often), 2, 
+                                          ifelse(grepl("Never", how_often), 1, NA)))))
+
+# numeric values for follow_gov: 1 through 4
+
+data5 <- data4 %>% 
+  mutate(follow_gov = ifelse(grepl("Most", follow_gov), 4,
+                             ifelse(grepl("Some", follow_gov), 3,
+                                    ifelse(grepl("Only", follow_gov), 2, 
+                                           ifelse(grepl("Hardly", follow_gov), 1, NA)))))
+
+# binary for disp_ideology
+
+data6 <- data5 %>% 
+  mutate(disp_ideology = ifelse(grepl("Yes", disp_ideology), 1, 
+                                ifelse(grepl("No", disp_ideology), 0, NA)))
+
+# relationship status: 0 = single, 1 = rel (there are no 'other' responses)
+
+data7 <- data6 %>% 
+  mutate(rel_stat = ifelse(grepl("Single", rel_stat), 1, 
+                           ifelse(grepl("In", rel_stat), 2,
+                                  ifelse(grepl("Other", rel_stat), 3, NA))))
+
+# race edit
+
+data8 <- data7 %>% 
+  mutate(race = ifelse(grepl("White", race), 1,
+                       ifelse(grepl("Black", race), 2,
+                              ifelse(grepl("Hispanic", race), 3,
+                                     ifelse(grepl("Asian", race), 4, 
+                                            ifelse(grepl("Native", race), 5,
+                                                   ifelse(grepl("Other", race), 6, NA)))))))
+
+# gender edit
+
+data9 <- data8 %>% 
+  mutate(gender = ifelse(grepl("Female", gender), 1, 
+                         ifelse(grepl("Male", gender), 2,
+                                ifelse(grepl("Non-binary", gender), 3, NA))))
+
+# pid5 ediy
+
+data10 <- data9 %>% 
+  mutate(pid5 = ifelse(grepl("Very Liberal", pid5), 1,
+                            ifelse(grepl("Somewhat Liberal", pid5), 2,
+                                    ifelse(grepl("Moderate", pid5), 3,
+                                           ifelse(grepl("Somewhat Conservative", pid5), 4,
+                                                  ifelse(grepl("Very Conservative", pid5), 5, NA))))))
+
+# self-rating rounding and chr to dbl 
+
+data11 <- data10 %>% 
+  mutate(self_rating = as.numeric(self_rating)) %>% 
+  mutate(int_self_rating = round(self_rating))
+
+
+
+data11 %>% write_csv("1372_clean.csv")
+
+x <- read.csv("1372_clean.csv")
+
+
+```
+
